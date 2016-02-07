@@ -12,21 +12,21 @@
 
 class TurtleDraw {
 public:
-  TurtleDraw(Json::Value nav_points);
+  TurtleDraw(Json::Value instructions);
   void loop();
 
 private:
 
   ros::NodeHandle nh_;
   ros::Publisher twist_pub_;
-  Json::Value nav_points_;
+  Json::Value instructions_;
 
 };
 
 // ---------------------------------------------------------
 
-TurtleDraw::TurtleDraw(Json::Value nav_points):
-  nav_points_(nav_points)
+TurtleDraw::TurtleDraw(Json::Value instructions):
+  instructions_(instructions)
 {
   // nh_.param("scale_angular", a_scale_, a_scale_);
   // nh_.param("scale_linear", l_scale_, l_scale_);
@@ -40,24 +40,23 @@ void TurtleDraw::loop() {
   ros::Rate rate(1); // hz
   rate.sleep();
 
-  // Iterate over sequence of instructions (#TODO: rename nav_points if we keep
-  // this semantics)
-  for ( int i = 0; i < nav_points_.size(); ++i ) {
-    ROS_DEBUG_STREAM(i << ": " << nav_points_[i]);
+  // Iterate over sequence of instructions
+  for ( int i = 0; i < instructions_.size(); ++i ) {
+    ROS_DEBUG_STREAM(i << ": " << instructions_[i]);
 
     geometry_msgs::Twist twist;
-    if (nav_points_[i].isMember("linear")) {
+    if (instructions_[i].isMember("linear")) {
 
-      twist.linear.x = nav_points_[i]["linear"].asDouble();
+      twist.linear.x = instructions_[i]["linear"].asDouble();
 
-    } else if (nav_points_[i].isMember("angular_deg")) {
+    } else if (instructions_[i].isMember("angular_deg")) {
 
       twist.angular.z =
-      nav_points_[i]["angular_deg"].asDouble() * (M_PI / 180.0);
+      instructions_[i]["angular_deg"].asDouble() * (M_PI / 180.0);
 
     } else {
 
-      ROS_WARN_STREAM("unknown drawing instruction: " << nav_points_[i]);
+      ROS_WARN_STREAM("unknown drawing instruction: " << instructions_[i]);
 
     }
 
@@ -88,11 +87,11 @@ int main(int argc, char** argv) {
 
   ROS_INFO("loading shape from file %s", argv[1]);
   std::ifstream file_in(argv[1]);
-  Json::Value nav_points = Json::Value();
-  file_in >> nav_points;
+  Json::Value instructions = Json::Value();
+  file_in >> instructions;
 
   // let's go
-  TurtleDraw turtleDraw(nav_points);
+  TurtleDraw turtleDraw(instructions);
   turtleDraw.loop();
 
   return(0);
