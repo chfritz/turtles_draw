@@ -8,7 +8,9 @@ Template.canvas.events({
 
 Template.canvas.onRendered( function(){
 
-    var renderer = PIXI.autoDetectRenderer(800, 600, { antialias: true });
+    var SIZE = 600;
+    var renderer = PIXI.autoDetectRenderer(
+      SIZE, SIZE, { antialias: true });
     $("#canvas").get(0).appendChild(renderer.view);
 
     // create the root of the scene graph
@@ -25,10 +27,11 @@ Template.canvas.onRendered( function(){
     var last = null;
 
     function transpose(pose) {
-      var SCALE = 50;
-      var OFFSET = { x: 100, y: 100 };
-      pose.x = pose.x * SCALE + OFFSET.x;
-      pose.y = pose.y * SCALE + OFFSET.y;
+      var SCALE = SIZE / 10; // 10 is the bounds of turtlesim
+      var x = pose.x * SCALE;
+      var y = SIZE - (pose.y * SCALE);
+      pose.x = x;
+      pose.y = y;
     }
 
     function update(id, fields) {
