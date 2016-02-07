@@ -49,17 +49,13 @@ void TurtleDraw::loop() {
 
       twist.linear.x = instructions_[i]["linear"].asDouble();
 
-    } else if (instructions_[i].isMember("angular_deg")) {
+    }
+    if (instructions_[i].isMember("angular_deg")) {
 
       twist.angular.z =
       instructions_[i]["angular_deg"].asDouble() * (M_PI / 180.0);
 
-    } else {
-
-      ROS_WARN_STREAM("unknown drawing instruction: " << instructions_[i]);
-
     }
-
 
     twist_pub_.publish(twist);
 
