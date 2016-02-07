@@ -21,8 +21,11 @@ rosrun turtle_draw turtle_draw_node shape1.json
 
 ## Meteor app
 
-### Dependencies on OSX:
+### Dependencies:
 
+https://github.com/RobotWebTools/roslibjs/pull/104
+
+#### on OSX:
 The app installs it's own npm dependencies, but on OSX El Capitan, I saw an
 error related to `jpeglib.h` when installing npm dependencies for roslibjs (used
 by chfritz:meteor-ros). I got past this by running:
