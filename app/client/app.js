@@ -6,7 +6,6 @@ Template.canvas.helpers({
 Template.canvas.events({
   });
 
-
 Template.canvas.onRendered( function(){
 
     var renderer = PIXI.autoDetectRenderer(800, 600, { antialias: true });
@@ -16,17 +15,41 @@ Template.canvas.onRendered( function(){
     var stage = new PIXI.Container();
     stage.interactive = true;
 
-    var x = 200;
-    (function animate() {
-
-      var g = new PIXI.Graphics();
-      g.moveTo(x, 200);
-      g.lineStyle(4, 0xffd900, 1);
-      x += 0.1;
-      g.lineTo(x, 200);
-      stage.addChild(g);
-
+    function animate() {
       renderer.render(stage);
       requestAnimationFrame( animate );
-    })();
+    };
+
+    Meteor.subscribe('trace');
+
+    var last = null;
+
+    function transpose(pose) {
+      var SCALE = 50;
+      var OFFSET = { x: 100, y: 100 };
+      pose.x = pose.x * SCALE + OFFSET.x;
+      pose.y = pose.y * SCALE + OFFSET.y;
+    }
+
+    function update(id, fields) {
+      transpose(fields);
+      console.log("changed", fields);
+      if (last) {
+        var g = new PIXI.Graphics();
+        g.lineStyle(4, 0xffd900, 1);
+        g.moveTo(last.x, last.y);
+        g.lineTo(fields.x, fields.y);
+        stage.addChild(g);
+      }
+
+      last = fields;
+    }
+
+    Trace.find().observeChanges({
+        changed: update,
+        added: update
+      });
+
+    // start animation
+    animate();
 });

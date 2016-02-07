@@ -1,5 +1,10 @@
+
+var pose = {};
+
 Meteor.startup(function () {
     // code to run on server at startup
+
+    Trace.remove({});
 
     var ros = new ROSLIB.Ros({
         url : 'ws://localhost:9090'
@@ -25,6 +30,12 @@ Meteor.startup(function () {
 
     topic_pose.subscribe(function(msg) {
         console.log("got message: ", msg);
+        // Trace.insert(msg);
+        pose = msg;
       });
+
+    Meteor.setInterval(function() {
+        Trace.upsert("1", pose);
+      }, 200);
 
   });
