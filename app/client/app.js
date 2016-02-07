@@ -6,10 +6,11 @@ Template.canvas.helpers({
 Template.canvas.events({
   });
 
+renderer = null;
 Template.canvas.onRendered( function(){
 
-    var SIZE = 600;
-    var renderer = PIXI.autoDetectRenderer(
+    var SIZE = Math.min(window.innerWidth, window.innerHeight);
+    renderer = PIXI.autoDetectRenderer(
       SIZE, SIZE, { antialias: true });
     $("#canvas").get(0).appendChild(renderer.view);
 
@@ -56,3 +57,9 @@ Template.canvas.onRendered( function(){
     // start animation
     animate();
 });
+
+
+window.onresize = function() {
+  $('canvas').get(0).style.width =
+  Math.min( window.innerWidth, window.innerHeight) + "px";
+}

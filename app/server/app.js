@@ -28,7 +28,7 @@ Meteor.startup(function () {
     });
 
     topic_pose.subscribe(function(msg) {
-        console.log("got message: ", msg);
+        // console.log("got message: ", msg);
         // Trace.insert(msg);
         // ^^ no can do that! not in a fiber, plus this would be a little
         // verbose
