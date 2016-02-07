@@ -3,112 +3,96 @@
 // #include <signal.h>
 // #include <termios.h>
 #include <stdio.h>
+#include <fstream>
+#include <unistd.h>
 
-#include "parson.h"
+#include "json/json.h"
 
 // ---------------------------------------------------------
 
 class TurtleDraw {
 public:
-  TurtleDraw();
+  TurtleDraw(Json::Value nav_points);
   void loop();
 
 private:
 
   ros::NodeHandle nh_;
-  double linear_, angular_, l_scale_, a_scale_;
   ros::Publisher twist_pub_;
+  Json::Value nav_points_;
+
 };
 
 // ---------------------------------------------------------
 
-TurtleDraw::TurtleDraw():
-  linear_(0),
-  angular_(0),
-  l_scale_(2.0),
-  a_scale_(2.0)
+TurtleDraw::TurtleDraw(Json::Value nav_points):
+  nav_points_(nav_points)
 {
-  nh_.param("scale_angular", a_scale_, a_scale_);
-  nh_.param("scale_linear", l_scale_, l_scale_);
+  // nh_.param("scale_angular", a_scale_, a_scale_);
+  // nh_.param("scale_linear", l_scale_, l_scale_);
 
   twist_pub_ = nh_.advertise<geometry_msgs::Twist>("turtle1/cmd_vel", 1);
 }
 
-void TurtleDraw::loop()
-{
-  // char c;
-  bool dirty=false;
+void TurtleDraw::loop() {
 
-  // get the console in raw mode
-  // tcgetattr(kfd, &cooked);
-  // memcpy(&raw, &cooked, sizeof(struct termios));
-  // raw.c_lflag &=~ (ICANON | ECHO);
-  // // Setting a new line, then end of file
-  // raw.c_cc[VEOL] = 1;
-  // raw.c_cc[VEOF] = 2;
-  // tcsetattr(kfd, TCSANOW, &raw);
-  //
-  // puts("Reading from keyboard");
-  // puts("---------------------------");
-  // puts("Use arrow keys to move the turtle.");
+  // rate at which we'll send instructions
+  ros::Rate rate(1); // hz
+  rate.sleep();
 
-
-  for(;;)
-  {
-    // get the next event from the keyboard
-    // if(read(kfd, &c, 1) < 0) {
-    //   perror("read():");
-    //   exit(-1);
-    // }
-
-    linear_ = angular_ = 0;
-    // ROS_DEBUG("value: 0x%02X\n", c);
-
-    ROS_DEBUG("LEFT");
-    angular_ = 1.0;
-    dirty = true;
-    // ROS_DEBUG("RIGHT");
-    // angular_ = -1.0;
-    // ROS_DEBUG("UP");
-    // linear_ = 1.0;
-    // ROS_DEBUG("DOWN");
-    // linear_ = -1.0;
-
+  // Iterate over sequence of instructions (#TODO: rename nav_points if we keep
+  // this semantics)
+  for ( int i = 0; i < nav_points_.size(); ++i ) {
+    ROS_DEBUG_STREAM(i << ": " << nav_points_[i]);
 
     geometry_msgs::Twist twist;
-    twist.angular.z = a_scale_*angular_;
-    twist.linear.x = l_scale_*linear_;
-    if (dirty == true) {
-      twist_pub_.publish(twist);
-      dirty = false;
-    }
-  }
+    if (nav_points_[i].isMember("linear")) {
 
+      twist.linear.x = nav_points_[i]["linear"].asDouble();
+
+    } else if (nav_points_[i].isMember("angular_deg")) {
+
+      twist.angular.z =
+      nav_points_[i]["angular_deg"].asDouble() * (M_PI / 180.0);
+
+    } else {
+
+      ROS_WARN_STREAM("unknown drawing instruction: " << nav_points_[i]);
+
+    }
+
+
+    twist_pub_.publish(twist);
+
+    rate.sleep();
+  }
 
   return;
 }
 
 // ---------------------------------------------------------
 
+void quit(int sig) {
 
-// int kfd = 0;
-// struct termios cooked, raw;
-
-// void quit(int sig)
-// {
-//   // tcsetattr(kfd, TCSANOW, &cooked);
-//   ros::shutdown();
-//   exit(0);
-// }
+  ROS_INFO("quit");
+  ros::shutdown();
+  exit(0);
+}
 
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
+
   ros::init(argc, argv, "turtle_draw");
-  TurtleDraw turtleDraw;
+  signal(SIGINT,quit);
+  ROS_INFO("START");
 
-  // signal(SIGINT,quit);
+  ROS_INFO("loading shape from file %s", argv[1]);
+  std::ifstream file_in(argv[1]);
+  Json::Value nav_points = Json::Value();
+  file_in >> nav_points;
 
+  // let's go
+  TurtleDraw turtleDraw(nav_points);
   turtleDraw.loop();
 
   return(0);

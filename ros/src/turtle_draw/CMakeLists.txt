@@ -114,6 +114,7 @@ catkin_package(
 # include_directories(include)
 include_directories(
   ${catkin_INCLUDE_DIRS}
+	src/
 )
 
 ## Declare a C++ library
@@ -126,8 +127,30 @@ include_directories(
 ## either from message generation or dynamic reconfigure
 # add_dependencies(turtle_draw ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+
+SET( PUBLIC_HEADERS
+    src/json/config.h
+    src/json/forwards.h
+    src/json/features.h
+    src/json/value.h
+    src/json/reader.h
+    src/json/writer.h
+    src/json/assertions.h
+    src/json/version.h
+    )
+
+SET(jsoncpp_sources
+                src/json_tool.h
+                src/json_reader.cpp
+                src/json_valueiterator.inl
+                src/json_value.cpp
+                src/json_writer.cpp
+                src/version.h.in)
+
 ## Declare a C++ executable
-add_executable(turtle_draw_node src/turtle_draw_node.cpp)
+add_executable(turtle_draw_node
+   src/turtle_draw_node.cpp
+	 ${jsoncpp_sources})
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
