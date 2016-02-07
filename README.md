@@ -23,7 +23,11 @@ rosrun turtle_draw turtle_draw_node shape1.json
 
 ### Dependencies:
 
-https://github.com/RobotWebTools/roslibjs/pull/104
+```sh
+$ apt-get install libcairo2-dev libjpeg8-dev libpango1.0-dev libgif-dev build-essential g++
+```
+
+see: https://github.com/RobotWebTools/roslibjs/pull/104
 
 #### on OSX:
 The app installs it's own npm dependencies, but on OSX El Capitan, I saw an
