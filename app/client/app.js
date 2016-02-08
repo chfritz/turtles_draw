@@ -35,21 +35,21 @@ Template.canvas.onRendered( function(){
       pose.y = y;
     }
 
-    function update(id, fields) {
-      transpose(fields);
-      console.log("changed", fields);
+    function update(doc) {
+      transpose(doc);
+      console.log("changed", doc);
       if (last) {
         var g = new PIXI.Graphics();
         g.lineStyle(4, 0xffd900, 1);
         g.moveTo(last.x, last.y);
-        g.lineTo(fields.x, fields.y);
+        g.lineTo(doc.x, doc.y);
         stage.addChild(g);
       }
 
-      last = fields;
+      last = doc;
     }
 
-    Trace.find().observeChanges({
+    Trace.find().observe({
         changed: update,
         added: update
       });
