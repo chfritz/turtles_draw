@@ -1,3 +1,4 @@
+#!/bin/bash
 
 echo
 echo "install ros and ros packages we need"
