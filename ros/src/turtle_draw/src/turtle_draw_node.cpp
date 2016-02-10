@@ -1,6 +1,6 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
-// #include <signal.h>
+#include <signal.h>
 // #include <termios.h>
 #include <stdio.h>
 #include <fstream>
@@ -10,9 +10,19 @@
 
 // ---------------------------------------------------------
 
+/** simple class that simply translates instructions from json into message for
+    the turtle1/cmd_vel topic */
 class TurtleDraw {
 public:
+
+  /** @param instructions is a JSON array of objects, each of which
+      can contain linear and/or angular_deg fields, specifying linear and
+      angular velocity
+  */
   TurtleDraw(Json::Value instructions);
+
+  /** loop just loops through the instructions and send them to the turtle (via
+      the cmd_vel topic) */
   void loop();
 
 private:
@@ -28,9 +38,6 @@ private:
 TurtleDraw::TurtleDraw(Json::Value instructions):
   instructions_(instructions)
 {
-  // nh_.param("scale_angular", a_scale_, a_scale_);
-  // nh_.param("scale_linear", l_scale_, l_scale_);
-
   twist_pub_ = nh_.advertise<geometry_msgs::Twist>("turtle1/cmd_vel", 1);
 }
 
@@ -82,6 +89,10 @@ int main(int argc, char** argv) {
   ROS_INFO("START");
 
   ROS_INFO("loading shape from file %s", argv[1]);
+  /* these files are just arrays of instruction with each instruction specifying
+     a linear and/or angular_deg velocity, where the latter is just like angular
+     but in degree rather than radian, which is easier for humans when
+     specifying stars */
   std::ifstream file_in(argv[1]);
   Json::Value instructions = Json::Value();
   file_in >> instructions;
