@@ -1,4 +1,6 @@
-# turtles_draw
+# Turtles Draw
+
+That's what they usually do. Here we'll allow people to watch them do that through live-streaming their paths via meteor to multiple browsers.
 
 ## Get the Code:
 
