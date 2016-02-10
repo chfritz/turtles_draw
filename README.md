@@ -20,7 +20,7 @@ rosbridge_websocket.launch`).
 
 Note: the current implementation assumes that there is no delay coming from the
 rendering of the turtlesim window. This means that if you are running turtlesim
-remotely, you won't be able to use the GUI because X-forwaring would be too
+remotely, you won't be able to use the GUI because X-forwarding would be too
 slow. In order to still try it out you can create a dummy, headless X server:
 
 ```sh
@@ -59,7 +59,9 @@ in `turtles_draw/ros` run (this was already compiled in the setup.sh script):
 rosrun turtle_draw turtle_draw_node shape1.json
 ```
 
-You can also try the other shapes `shape2.json`, and `shape3-norte_star.json`.
+You will see lines being drawn with small waiting periods in between. Eventually these lines will close to a star. You can also try the other shapes `shape2.json`, and `shape3-norte_star.json`.
+
+
 
 ## Running on OSX
 The app installs it's own npm dependencies, but on OSX El Capitan, I saw an
