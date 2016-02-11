@@ -1,12 +1,57 @@
-#include <ros/ros.h>
-#include <geometry_msgs/Twist.h>
-#include <signal.h>
-// #include <termios.h>
 #include <stdio.h>
+#include <signal.h>
 #include <fstream>
 #include <unistd.h>
+#include <cmath>
+
+#include <ros/ros.h>
+#include <geometry_msgs/Twist.h>
+#include <turtlesim/Pose.h>
 
 #include "json/json.h"
+
+#define LOCATION_EPSILON 0.01
+#define ANGLE_EPSILON 0.005
+
+void quit(int sig) {
+  ROS_INFO("quit");
+  ros::shutdown();
+  exit(0);
+}
+
+
+// ---------------------------------------------------------
+
+class Vector2D {
+  /** a simple, 2d point class */
+
+public:
+    float x, y;
+
+    Vector2D(double _x, double _y) : x(_x), y(_y) {}
+
+    /** vector substraction */
+    Vector2D operator-(const Vector2D& other) {
+      Vector2D rtv(x - other.x, y - other.y);
+      return rtv;
+    }
+
+    /** vector addition */
+    Vector2D operator+(const Vector2D& other) {
+      Vector2D rtv(x + other.x, y * other.y);
+      return rtv;
+    }
+
+    /** length of this vector, L_2 norm */
+    double length() {
+      return sqrt(x * x + y * y);
+    }
+
+    /** the angle of the vector */
+    double angle() {
+      return atan2(y, x);
+    }
+};
 
 // ---------------------------------------------------------
 
@@ -23,64 +68,147 @@ public:
 
   /** loop just loops through the instructions and send them to the turtle (via
       the cmd_vel topic) */
-  void loop();
+  // void loop();
 
 private:
 
   ros::NodeHandle nh_;
   ros::Publisher twist_pub_;
+  ros::Subscriber pose_sub_;
   Json::Value instructions_;
 
+  Vector2D currentLocation;
+  double currentAngle;
+
+  Vector2D nextGoal;
+  int navIndex;
+
+  void turtlePoseCB(const turtlesim::Pose::ConstPtr& msg);
+
+  void getNextGoal() {
+    nextGoal.x = instructions_[navIndex][0].asDouble();
+    nextGoal.y = instructions_[navIndex][1].asDouble();
+    ++navIndex;
+  }
+
+  bool done() {
+    return (navIndex >= instructions_.size());
+  }
 };
 
 // ---------------------------------------------------------
 
 TurtleDraw::TurtleDraw(Json::Value instructions):
-  instructions_(instructions)
+  instructions_(instructions),
+  currentLocation(0,0),
+  nextGoal(0,0),
+  navIndex(0)
 {
   twist_pub_ = nh_.advertise<geometry_msgs::Twist>("turtle1/cmd_vel", 1);
+  pose_sub_ = nh_.subscribe("/turtle1/pose", 1, &TurtleDraw::turtlePoseCB, this);
+  getNextGoal();
 }
 
-void TurtleDraw::loop() {
 
-  // rate at which we'll send instructions
-  ros::Rate rate(1); // hz
-  rate.sleep();
 
-  // Iterate over sequence of instructions
-  for ( int i = 0; i < instructions_.size(); ++i ) {
-    ROS_DEBUG_STREAM(i << ": " << instructions_[i]);
+void TurtleDraw::turtlePoseCB(const turtlesim::Pose::ConstPtr& msg) {
+  ROS_INFO_STREAM("new pose, theta:" << msg->theta);
+  currentLocation.x = msg->x;
+  currentLocation.y = msg->y;
+  currentAngle = msg->theta;
 
-    geometry_msgs::Twist twist;
-    if (instructions_[i].isMember("linear")) {
+  geometry_msgs::Twist twist;
+  Vector2D delta = nextGoal - currentLocation;
 
-      twist.linear.x = instructions_[i]["linear"].asDouble();
+  ROS_INFO_STREAM(
+    "heading: " << currentAngle
+    << ", direction to goal: " << delta.angle()
+    << ", delta length: " << delta.length()
+  );
 
+  if (delta.length() < LOCATION_EPSILON) {
+    // we've arrived at the next nav point
+
+    if (done()) {
+      // this was the last navigation point, we are done!
+      quit(0);
     }
-    if (instructions_[i].isMember("angular_deg")) {
 
-      twist.angular.z =
-      instructions_[i]["angular_deg"].asDouble() * (M_PI / 180.0);
+    getNextGoal();
 
+  } else {
+
+    twist.angular.z = delta.angle() - currentAngle;
+
+    // if deviated too much from direction, stop and turn
+    if (std::abs(delta.angle() - currentAngle) > ANGLE_EPSILON) {
+      twist.linear.x = 0;
+    } else {
+      // otherwise, move
+      twist.linear.x = delta.length();
     }
 
+    ROS_INFO_STREAM("x: " << twist.linear.x
+      << ", z: " << twist.angular.z
+      << ", heading: " << currentAngle
+      << ", direction to goal: " << delta.angle()
+      << ", delta length: " << delta.length()
+    );
     twist_pub_.publish(twist);
-
-    rate.sleep();
   }
-
-  return;
 }
+
+// // TODO: this needs to move in with turtlePoseCB
+// void TurtleDraw::loop() {
+//
+//   // rate at which we'll send instructions
+//   ros::Rate rate(10); // hz
+//   rate.sleep();
+//
+//   geometry_msgs::Twist twist;
+//
+//   // Iterate over sequence of instructions
+//   for ( int i = 0; i < instructions_.size(); ++i ) {
+//     ROS_DEBUG_STREAM(i << ": " << instructions_[i]);
+//     Vector2D nextGoal(instructions_[i][0].asDouble(),
+//       instructions_[i][1].asDouble());
+//     Vector2D delta = nextGoal - currentLocation;
+//
+//     while (delta.length() > LOCATION_EPSILON) {
+//
+//       // we also turn towards the goal
+//       twist.angular.z = delta.angle() - currentAngle;
+//
+//       // if deviated too much from direction, stop and turn
+//       if (std::abs(delta.angle() - currentAngle) > ANGLE_EPSILON) {
+//         twist.linear.x = 0;
+//       } else {
+//         // otherwise, move
+//         twist.linear.x = delta.length();
+//       }
+//
+//       ROS_INFO_STREAM("x: " << twist.linear.x
+//         << ", z: " << twist.angular.z
+//         << ", heading: " << currentAngle
+//         << ", direction to goal: " << delta.angle()
+//         << ", delta length: " << delta.length()
+//       );
+//       twist_pub_.publish(twist);
+//
+//       rate.sleep();
+//       delta = nextGoal - currentLocation;
+//
+//     }
+//
+//     // we've arrived at the next nav point
+//   }
+//
+//   // we've arrived at the last nav point
+//
+//   return;
+// }
 
 // ---------------------------------------------------------
-
-void quit(int sig) {
-
-  ROS_INFO("quit");
-  ros::shutdown();
-  exit(0);
-}
-
 
 int main(int argc, char** argv) {
 
@@ -99,7 +227,7 @@ int main(int argc, char** argv) {
 
   // let's go
   TurtleDraw turtleDraw(instructions);
-  turtleDraw.loop();
+  ros::spin();
 
   return(0);
 }
