@@ -12,6 +12,7 @@
 
 #define LOCATION_EPSILON 0.01
 #define ANGLE_EPSILON 0.005
+#define SPEED 3.0
 
 void quit(int sig) {
   ROS_INFO("quit");
@@ -138,14 +139,14 @@ void TurtleDraw::turtlePoseCB(const turtlesim::Pose::ConstPtr& msg) {
 
   } else {
 
-    twist.angular.z = delta.angle() - currentAngle;
+    twist.angular.z = (delta.angle() - currentAngle) * SPEED;
 
     // if deviated too much from direction, stop and turn
     if (std::abs(delta.angle() - currentAngle) > ANGLE_EPSILON) {
       twist.linear.x = 0;
     } else {
       // otherwise, move
-      twist.linear.x = delta.length();
+      twist.linear.x = delta.length() * SPEED;
     }
 
     ROS_INFO_STREAM("x: " << twist.linear.x
