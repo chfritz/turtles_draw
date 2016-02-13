@@ -63,8 +63,9 @@ Template.canvas.onRendered( function() {
 function onClick(mouseData) {
 
    var coords = {
-     x: mouseData.x,
-     y: mouseData.y,
+    // normalize coordinates in terms of window size (after resizing)
+     x: mouseData.x * (SIZE / renderer.view.clientWidth),
+     y: mouseData.y * (SIZE / renderer.view.clientHeight)
    }
    translate_inv(coords);
    console.log(coords);
@@ -92,7 +93,8 @@ function onClick(mouseData) {
      var g = new PIXI.Graphics();
      g.lineStyle(0);
      g.beginFill(0xFFFF0B, 0.5);
-     g.drawCircle(mouseData.x, mouseData.y, 10);
+     g.drawCircle(mouseData.x * (SIZE / renderer.view.clientWidth),
+       mouseData.y * (SIZE / renderer.view.clientHeight), 10);
      g.endFill();
      stage.addChild(g);
    }
@@ -125,6 +127,7 @@ function animate() {
 
 // resize the canvas with the window
 window.onresize = function() {
-  $('canvas').get(0).style.width =
-  Math.min( window.innerWidth, window.innerHeight) + "px";
+  var newsize = Math.min(window.innerWidth, window.innerHeight);
+  $('canvas').get(0).style.width = newsize + "px";
+  $('canvas').get(0).style.height = newsize + "px";
 }
