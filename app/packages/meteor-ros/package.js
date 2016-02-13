@@ -16,7 +16,7 @@ Npm.depends({
 Package.onUse(function(api) {
   api.versionsFrom('1.2.1');
   api.use('ecmascript');
-  api.addFiles('meteor-ros.js');
+  api.addFiles('meteor-ros.js', 'server');
   if (api.export) {
     api.export('ROSLIB', 'server');
   }
