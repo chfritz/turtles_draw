@@ -1,8 +1,13 @@
 // Globals
 
+// size of the canvas, will be set when rendering the canvas
 var SIZE;
 renderer = null;
+
+// shape to draw, will be filled when user clicks
 var shape = [];
+// the pixi drawing stage
+var stage;
 
 // -------------------------------------------------------------------
 
@@ -15,6 +20,7 @@ function translate(pose) {
   pose.y = y;
 }
 
+/** inverse of translate */
 function translate_inv(coords) {
   console.log(coords);
   var scale = SIZE / 10; // 10 is the bound of turtlesim
@@ -26,97 +32,96 @@ function translate_inv(coords) {
 
 // -------------------------------------------------------------------
 
-Template.canvas.helpers({
-  });
-
-Template.canvas.events({
-    // 'click': function(event) {
-    //   console.log("event", event);
-    // we could also grab the event here, but here pixi doesn't add its sugar
-    // }
-  });
-
-Template.canvas.onRendered( function(){
+Template.canvas.onRendered( function() {
     Meteor.subscribe('trace');
 });
 
-Template.canvas.onRendered( function(){
+Template.canvas.onRendered( function() {
 
+    // setup pixi
     SIZE = Math.min(window.innerWidth, window.innerHeight);
     renderer = PIXI.autoDetectRenderer(
       SIZE, SIZE, { antialias: true, autoResize: true });
     $("#canvas").get(0).appendChild(renderer.view);
 
-    // create the root of the scene graph
-    var stage = new PIXI.Container();
+    stage = new PIXI.Container();
     stage.interactive = true;
-
-    renderer.view.onclick = function(mouseData){
-       var coords = {
-         x: mouseData.x, // / renderer.view.clientWidth,
-         y: mouseData.y, // / renderer.view.clientHeight
-       }
-       translate_inv(coords);
-       console.log(coords);
-
-       var distance;
-       if (shape.length > 1) {
-         diff = {
-           x: coords.x - shape[0].x,
-           y: coords.y - shape[0].y
-         };
-         distance = Math.sqrt( diff.x * diff.x + diff.y * diff.y );
-       }
-       if (distance && distance < 0.1) {
-         // the user clicked very close to the origin, close this shape
-         shape.push(shape[0]);
-
-         // order the turtle to draw this
-         Meteor.call('draw', shape);
-
-         shape = [];
-       } else {
-
-         shape.push(coords);
-         var g = new PIXI.Graphics();
-         g.lineStyle(0);
-         g.beginFill(0xFFFF0B, 0.5);
-         g.drawCircle(mouseData.x, mouseData.y, 10);
-         g.endFill();
-         stage.addChild(g);
-       }
-    }
+    renderer.view.onclick = onClick;
 
     // keep getting traces and draw them on updates
-    var last = null;
-    function update(doc) {
-      translate(doc);
-      console.log("changed", doc);
-
-      if (last) {
-        var g = new PIXI.Graphics();
-        g.lineStyle(4, 0xffd900, 1);
-        g.moveTo(last.x, last.y);
-        g.lineTo(doc.x, doc.y);
-        stage.addChild(g);
-      }
-
-      last = doc;
-    }
-
     Trace.find().observe({
         changed: update,
         added: update
       });
 
-    // start animation
-    function animate() {
-      renderer.render(stage);
-      requestAnimationFrame( animate );
-    };
-
     animate();
 });
+
+// -------------------------------------------------------------------
+
+// handle mouse clicks: add to shape array; when closed, call the server with it
+function onClick(mouseData) {
+
+   var coords = {
+     x: mouseData.x,
+     y: mouseData.y,
+   }
+   translate_inv(coords);
+   console.log(coords);
+
+   var distance;
+   if (shape.length > 1) {
+
+     diff = {
+       x: coords.x - shape[0].x,
+       y: coords.y - shape[0].y
+     };
+     distance = Math.sqrt( diff.x * diff.x + diff.y * diff.y );
+   }
+
+   if (distance && distance < 0.1) {
+     // the user clicked very close to the origin, close this shape
+     shape.push(shape[0]);
+     // order the turtle to draw this
+     Meteor.call('draw', shape);
+     shape = [];
+
+   } else {
+
+     shape.push(coords);
+     var g = new PIXI.Graphics();
+     g.lineStyle(0);
+     g.beginFill(0xFFFF0B, 0.5);
+     g.drawCircle(mouseData.x, mouseData.y, 10);
+     g.endFill();
+     stage.addChild(g);
+   }
+}
+
+// handling pose updates from server (via collection): draw consecutive polygon
+var last = null;
+function update(doc) {
+
+  translate(doc);
+  console.log("changed", doc);
+
+  if (last) {
+    var g = new PIXI.Graphics();
+    g.lineStyle(4, 0xffd900, 1);
+    g.moveTo(last.x, last.y);
+    g.lineTo(doc.x, doc.y);
+    stage.addChild(g);
+  }
+
+  last = doc;
+}
+
+// animation loop
+function animate() {
+  renderer.render(stage);
+  requestAnimationFrame( animate );
+};
+
 
 // resize the canvas with the window
 window.onresize = function() {

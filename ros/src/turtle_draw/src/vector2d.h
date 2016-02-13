@@ -3,6 +3,8 @@
 
 #include <cmath>
 
+#include <geometry_msgs/Point.h>
+
 class Vector2D {
   /** a simple, 2d point class */
 
@@ -10,6 +12,11 @@ public:
     float x, y;
 
     Vector2D(double _x, double _y) : x(_x), y(_y) {}
+
+    void operator=(const geometry_msgs::Point& point) {
+      x = point.x;
+      y = point.y;
+    }
 
     /** vector substraction */
     Vector2D operator-(const Vector2D& other) {

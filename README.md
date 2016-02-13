@@ -1,6 +1,11 @@
 # Turtles Draw
 
-That's what they usually do. Here we'll allow people to watch them do that through live-streaming their paths via meteor to multiple browsers.
+That's what they usually do -- in the sand. Here we'll allow people to watch
+them do that through live-streaming their paths via meteor to multiple browsers.
+
+In this version, the user can draw shapes on the web app by clicking a sequence
+of points that form a closed shape -- the turtle starts its work once the user
+closes the shape, i.e., click on the starting location again.
 
 ## Get the Code:
 
@@ -58,15 +63,26 @@ in `turtles_draw/ros` run (this was already compiled in the setup.sh script):
 
 ```sh
 . devel/setup.bash
-rosrun turtle_draw turtle_draw_node shape1.json
+rosrun turtle_draw turtle_draw_node
 ```
 
-You will see lines being drawn with small waiting periods in between. Eventually these lines will close to a star. You can also try the other shapes `shape2.json`, and `shape3-norte_star.json`.
+In this version, the turtle will do nothing at first, but wait for input form
+the web app. In terms of the shape to draw (path to follow).
+
+### Usage
+
+Once both the meteor app is running and the ros node, go to your browser window
+(localhost:3000) and start drawing a shape -- click on the canvas to add points,
+and close the shape by eventually clicking on the starting location again. The
+turtle will start drawing. The turtle is preemptable, i.e. if, while drawing,
+you or someone else in a different browser (tab/window) draws a new shape, the
+turtle will abandon its current shape and start drawing the new one instead.
+
 
 
 
 ## Running on OSX
-The app installs it's own npm dependencies, but on OSX El Capitan, I saw an
+The app installs its own npm dependencies, but on OSX El Capitan, I saw an
 error related to `jpeglib.h` when installing npm dependencies for roslibjs (used
 by chfritz:meteor-ros). I got past this by running:
 
@@ -75,13 +91,9 @@ xcode-select --install
 ```
 as described here https://github.com/Automattic/node-canvas/issues/649.
 
-### install rosbridge
+### rosbridge
 
-```sh
-sudo apt-get install ros-jade-rosbridge-suite
-```
-
-on OSX you'll need to compile that from source (https://github.com/RobotWebTools/rosbridge_suite/issues/198#issuecomment-159776996):
+On OSX you'll need to compile it from source (https://github.com/RobotWebTools/rosbridge_suite/issues/198#issuecomment-159776996):
 
 ```sh
 # required on el capitan to find openssl headers (https://github.com/phusion/passenger/issues/1630):
@@ -97,16 +109,10 @@ sudo pip install twisted
 sudo pip install pymongo
 ```
 
-### launch rosbridge
+Then launch it (assuming you have compiled it and have run `. devel/setup.bash`):
 
 ```sh
 roslaunch rosbridge_server rosbridge_websocket.launch
 ```
 
-### launch the app
-
-```
-meteor
-```
-
-then launch a browser at `localhost:3000`
+Afterwards continue as described above for Ubuntu.
