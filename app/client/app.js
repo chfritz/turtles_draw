@@ -9,6 +9,8 @@ var shape = [];
 // the pixi drawing stage
 var stage;
 
+var last = null;
+
 // -------------------------------------------------------------------
 
 /** translate from turtlesim coordinates to pixi coordinates */
@@ -83,9 +85,19 @@ function onClick(mouseData) {
    if (distance && distance < 0.1) {
      // the user clicked very close to the origin, close this shape
      shape.push(shape[0]);
-     // order the turtle to draw this
-     Meteor.call('draw', shape);
-     shape = [];
+     // teleport turtle to the start
+     Meteor.call('teleport', shape[0], function(err, res) {
+         if (err) {
+           console.log("not drawing, couldn't teleport: ", err);
+         } else {
+           // clear the canvas
+           last = null;
+           stage.removeChildren();
+           // then order the turtle to draw this
+           Meteor.call('draw', shape);
+           shape = [];
+         }
+       });
 
    } else {
 
@@ -101,7 +113,6 @@ function onClick(mouseData) {
 }
 
 // handling pose updates from server (via collection): draw consecutive polygon
-var last = null;
 function update(doc) {
 
   translate(doc);
