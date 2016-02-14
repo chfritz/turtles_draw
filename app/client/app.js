@@ -1,140 +1,144 @@
-// Globals
 
-// size of the canvas, will be set when rendering the canvas
-var SIZE;
-renderer = null;
+class Drawing {
+  /** class to handling all the application logic of drawing traces of the
+  turtle as well as capturing clicks sequences and sending them as shapes */
 
-// shape to draw, will be filled when user clicks
-var shape = [];
-// the pixi drawing stage
-var stage;
+  constructor() {
+    // setup pixi
+    this.size = Math.min(window.innerWidth, window.innerHeight);
+    this.renderer = PIXI.autoDetectRenderer(
+      this.size, this.size, { antialias: true, autoResize: true });
+    $("#canvas").get(0).appendChild(this.renderer.view);
 
-var last = null;
+    this.stage = new PIXI.Container();
+    this.stage.interactive = true;
+    this.renderer.view.onclick = this.onClick.bind(this);
 
-// -------------------------------------------------------------------
+    this.shape = [];
+    this.last = null;
 
-/** translate from turtlesim coordinates to pixi coordinates */
-function translate(pose) {
-  var scale = SIZE / 10; // 10 is the bound of turtlesim
-  var x = pose.x * scale;
-  var y = SIZE - (pose.y * scale);
-  pose.x = x;
-  pose.y = y;
+    // width and height of turtlesim coordinate system
+    this.turtlesim_size = 11;
+
+    // keep getting traces and draw them on updates
+    Trace.find().observe({
+        changed: this.update.bind(this),
+        added: this.update.bind(this)
+      });
+
+    this.animate();
+  }
+
+  /** handling mouse clicks on the canvas: add nav point, check for closes
+  /** shape, when closed, order turtle to draw */
+  onClick(mouseData) {
+
+    var coords = {
+      // normalize coordinates in terms of window size (after resizing)
+      x: mouseData.x * (this.size / this.renderer.view.clientWidth),
+      y: mouseData.y * (this.size / this.renderer.view.clientHeight)
+    }
+    var turtle_coords = this.translate_inv(coords);
+    console.log(turtle_coords);
+
+    var distance;
+    if (this.shape.length > 1) {
+
+      diff = {
+        x: turtle_coords.x - this.shape[0].x,
+        y: turtle_coords.y - this.shape[0].y
+      };
+      distance = Math.sqrt(diff.x * diff.x + diff.y * diff.y);
+    }
+
+    if (distance && distance < 0.1) {
+      // the user clicked very close to the origin, close this shape
+      this.shape.push(this.shape[0]);
+      // teleport turtle to the start
+      Meteor.call('teleport', this.shape[0], (function(err, res) {
+          if (err) {
+            console.log("not drawing, couldn't teleport: ", err);
+          } else {
+            // clear the canvas
+            this.last = null;
+            this.stage.removeChildren();
+            // then order the turtle to draw this
+            Meteor.call('draw', this.shape);
+            this.shape = [];
+          }
+      }).bind(this));
+
+    } else {
+
+      this.shape.push(turtle_coords);
+      var g = new PIXI.Graphics();
+      g.lineStyle(0);
+      g.beginFill(0xFFFF0B, 0.5);
+      g.drawCircle(coords.x, coords.y, 10);
+      g.endFill();
+      this.stage.addChild(g);
+    }
+  }
+
+  // handling pose updates from server (via collection): draw consecutive polygon
+  update(pose) {
+    console.log("new pose: ", pose);
+
+    var newpose = this.translate(pose);
+
+    if (this.last) {
+      var g = new PIXI.Graphics();
+      g.lineStyle(4, 0xffd900, 1);
+      g.moveTo(this.last.x, this.last.y);
+      g.lineTo(newpose.x, newpose.y);
+      this.stage.addChild(g);
+    }
+
+    this.last = newpose;
+  }
+
+  // animation loop
+  animate() {
+    this.renderer.render(this.stage);
+    requestAnimationFrame(this.animate.bind(this));
+  };
+
+  // -------------------------------------------------
+  // utilities
+
+  /** translate from turtlesim coordinates to pixi coordinates */
+  translate(pose) {
+    var scale = this.size / this.turtlesim_size;
+    return {
+      x: pose.x * scale,
+      y: this.size - (pose.y * scale)
+    };
+  }
+
+  /** inverse of translate */
+  translate_inv(coords) {
+    console.log(coords);
+    var scale = this.size / this.turtlesim_size;
+    return {
+      x: coords.x / scale,
+      y: (this.size - coords.y) / scale
+    };
+  }
+
 }
 
-/** inverse of translate */
-function translate_inv(coords) {
-  console.log(coords);
-  var scale = SIZE / 10; // 10 is the bound of turtlesim
-  var x = coords.x / scale;
-  var y = (SIZE - coords.y) / scale;
-  coords.x = x;
-  coords.y = y;
-}
-
 // -------------------------------------------------------------------
+// Meteor code
 
-Template.canvas.onRendered( function() {
+Template.canvas.onCreated( function() {
     Meteor.subscribe('trace');
 });
 
 Template.canvas.onRendered( function() {
-
-    // setup pixi
-    SIZE = Math.min(window.innerWidth, window.innerHeight);
-    renderer = PIXI.autoDetectRenderer(
-      SIZE, SIZE, { antialias: true, autoResize: true });
-    $("#canvas").get(0).appendChild(renderer.view);
-
-    stage = new PIXI.Container();
-    stage.interactive = true;
-    renderer.view.onclick = onClick;
-
-    // keep getting traces and draw them on updates
-    Trace.find().observe({
-        changed: update,
-        added: update
-      });
-
-    animate();
+    var drawing = new Drawing();
 });
 
 // -------------------------------------------------------------------
-
-// handle mouse clicks: add to shape array; when closed, call the server with it
-function onClick(mouseData) {
-
-   var coords = {
-    // normalize coordinates in terms of window size (after resizing)
-     x: mouseData.x * (SIZE / renderer.view.clientWidth),
-     y: mouseData.y * (SIZE / renderer.view.clientHeight)
-   }
-   translate_inv(coords);
-   console.log(coords);
-
-   var distance;
-   if (shape.length > 1) {
-
-     diff = {
-       x: coords.x - shape[0].x,
-       y: coords.y - shape[0].y
-     };
-     distance = Math.sqrt( diff.x * diff.x + diff.y * diff.y );
-   }
-
-   if (distance && distance < 0.1) {
-     // the user clicked very close to the origin, close this shape
-     shape.push(shape[0]);
-     // teleport turtle to the start
-     Meteor.call('teleport', shape[0], function(err, res) {
-         if (err) {
-           console.log("not drawing, couldn't teleport: ", err);
-         } else {
-           // clear the canvas
-           last = null;
-           stage.removeChildren();
-           // then order the turtle to draw this
-           Meteor.call('draw', shape);
-           shape = [];
-         }
-       });
-
-   } else {
-
-     shape.push(coords);
-     var g = new PIXI.Graphics();
-     g.lineStyle(0);
-     g.beginFill(0xFFFF0B, 0.5);
-     g.drawCircle(mouseData.x * (SIZE / renderer.view.clientWidth),
-       mouseData.y * (SIZE / renderer.view.clientHeight), 10);
-     g.endFill();
-     stage.addChild(g);
-   }
-}
-
-// handling pose updates from server (via collection): draw consecutive polygon
-function update(doc) {
-
-  translate(doc);
-  console.log("changed", doc);
-
-  if (last) {
-    var g = new PIXI.Graphics();
-    g.lineStyle(4, 0xffd900, 1);
-    g.moveTo(last.x, last.y);
-    g.lineTo(doc.x, doc.y);
-    stage.addChild(g);
-  }
-
-  last = doc;
-}
-
-// animation loop
-function animate() {
-  renderer.render(stage);
-  requestAnimationFrame( animate );
-};
-
 
 // resize the canvas with the window
 window.onresize = function() {
