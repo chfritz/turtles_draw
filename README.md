@@ -25,19 +25,6 @@ In separate terminals, start `roscore`, turtlesim (`rosrun turtlesim
 turtlesim_node`), and rosbridge (`roslaunch rosbridge_server
 rosbridge_websocket.launch`).
 
-Note: the current implementation assumes that there is no delay coming from the
-rendering of the turtlesim window. This means that if you are running turtlesim
-remotely, you won't be able to use the GUI because X-forwarding would be too
-slow. In order to still try it out you can create a dummy, headless X server:
-
-```sh
-sudo apt-get install xvfb
-Xvfb -shmem -screen 0 1280x1024x24
-DISPLAY=:0 rosrun turtlesim turtlesim_node
-```
-
-Of course, now you'll *have* to use the meteor app to see what's happening.
-
 
 ### Meteor App:
 
@@ -50,7 +37,7 @@ meteor
 This will at first take a while because it will install roslibjs and compile its
 native code (this is why we needed cairo, which gets installed by the setup.sh
 script). If anything fails here, see
-https://github.com/RobotWebTools/roslibjs/pull/104 and makre sure all
+https://github.com/RobotWebTools/roslibjs/pull/104 and make sure all
 depedencies are installed.
 
 Once meteor has started (you'll see `=> App running at: http://localhost:3000/`),
